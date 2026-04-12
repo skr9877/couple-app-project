@@ -3,28 +3,25 @@
     <div class="card">
       <div class="heart">💕</div>
       <h1>Couple App</h1>
-      <p>함께하는 모든 순간</p>
-      <button @click="testApi">백엔드 연동 테스트</button>
-      <p v-if="result" class="result">{{ result }}</p>
+      <p class="subtitle">함께하는 모든 순간</p>
+
+      <div class="menu">
+        <RouterLink to="/photos" class="menu-item">
+          <span class="icon">📷</span>
+          <span>사진</span>
+        </RouterLink>
+        <RouterLink to="/calendar" class="menu-item">
+          <span class="icon">📅</span>
+          <span>달력</span>
+        </RouterLink>
+        <RouterLink to="/map" class="menu-item">
+          <span class="icon">🍽️</span>
+          <span>맛집 지도</span>
+        </RouterLink>
+      </div>
     </div>
   </div>
 </template>
-
-<script setup>
-import { ref } from 'vue'
-
-const result = ref('')
-
-async function testApi() {
-  try {
-    const res = await fetch('http://localhost:8080/api/test')
-    const data = await res.json()
-    result.value = data.message
-  } catch (e) {
-    result.value = '연동 실패 - 백엔드 서버를 확인하세요'
-  }
-}
-</script>
 
 <style scoped>
 .home {
@@ -54,29 +51,42 @@ h1 {
   margin-bottom: 10px;
 }
 
-p {
+.subtitle {
   color: #888;
   font-size: 1.1rem;
+  margin-bottom: 40px;
 }
 
-button {
-  margin-top: 20px;
-  padding: 10px 24px;
+.menu {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.menu-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  background: #fff0f5;
+  border: 2px solid #f8bbd0;
+  border-radius: 16px;
+  padding: 24px 32px;
+  color: #e91e63;
+  font-size: 1rem;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.menu-item:hover {
   background: #e91e63;
   color: white;
-  border: none;
-  border-radius: 20px;
-  font-size: 1rem;
-  cursor: pointer;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(233, 30, 99, 0.3);
 }
 
-button:hover {
-  background: #c2185b;
-}
-
-.result {
-  margin-top: 16px;
-  color: #e91e63;
-  font-weight: bold;
+.icon {
+  font-size: 2rem;
 }
 </style>
