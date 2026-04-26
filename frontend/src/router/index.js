@@ -3,6 +3,8 @@ import HomeView from '../views/HomeView.vue'
 import PhotosView from '../views/PhotosView.vue'
 import CalendarView from '../views/CalendarView.vue'
 import MapView from '../views/MapView.vue'
+import ScheduleRegisterView from '../views/ScheduleRegisterView.vue'
+import ScheduleDetailView from '../views/ScheduleDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -26,6 +28,16 @@ const router = createRouter({
       path: '/map',
       name: 'map',
       component: MapView,
+    },
+    {
+      path: '/schedule/register',
+      name: 'schedule-register',
+      component: ScheduleRegisterView,
+    },
+    {
+      path: '/schedule/:id',
+      name: 'schedule-detail',
+      component: ScheduleDetailView,
     },
   ],
 })
