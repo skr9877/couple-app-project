@@ -59,10 +59,10 @@
               class="photo-card"
               @click="openPhoto(photo)"
             >
-              <img :src="photo.url" :alt="photo.title" />
+              <img :src="photoUrl(photo)" :alt="photoTitle(photo)" />
               <div class="photo-overlay">
-                <span class="photo-title">{{ photo.title }}</span>
-                <span class="photo-date">{{ photo.date }}</span>
+                <span class="photo-title">{{ photoTitle(photo) }}</span>
+                <span class="photo-date">{{ photoDate(photo) }}</span>
               </div>
             </div>
           </div>
@@ -92,10 +92,10 @@
     <div v-if="viewerPhoto" class="viewer" @click.self="viewerPhoto = null">
       <div class="viewer-box">
         <button class="viewer-close" @click="viewerPhoto = null">✕</button>
-        <img :src="viewerPhoto.url" :alt="viewerPhoto.title" />
+        <img :src="photoUrl(viewerPhoto)" :alt="photoTitle(viewerPhoto)" />
         <div class="viewer-info">
-          <span class="viewer-title">{{ viewerPhoto.title }}</span>
-          <span class="viewer-date">{{ viewerPhoto.date }}</span>
+          <span class="viewer-title">{{ photoTitle(viewerPhoto) }}</span>
+          <span class="viewer-date">{{ photoDate(viewerPhoto) }}</span>
           <button class="viewer-delete" @click="deletePhoto(viewerPhoto)">🗑 삭제</button>
         </div>
       </div>
@@ -104,7 +104,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 
 const photos = ref([])
 const viewerPhoto = ref(null)
@@ -112,9 +112,26 @@ const filterKey = ref(null)
 const showPicker = ref(false)
 const pickerYear = ref(new Date().getFullYear())
 
-onMounted(() => {
-  photos.value = JSON.parse(localStorage.getItem('photos') || '[]')
-})
+async function fetchPhotos() {
+  const url = filterKey.value ? `/api/photos?month=${filterKey.value}` : '/api/photos'
+  const res = await fetch(url)
+  photos.value = await res.json()
+}
+
+onMounted(fetchPhotos)
+watch(filterKey, fetchPhotos)
+
+function photoUrl(photo) {
+  return `/files/image/${photo.yearMonth}/${photo.storedFilename}`
+}
+
+function photoTitle(photo) {
+  return photo.originalFilename.replace(/\.[^/.]+$/, '')
+}
+
+function photoDate(photo) {
+  return new Date(photo.uploadDate).toLocaleDateString('ko-KR')
+}
 
 function monthKey(year, month) {
   return `${year}-${String(month).padStart(2, '0')}`
@@ -136,11 +153,8 @@ const filterLabel = computed(() => {
 })
 
 const filteredGroups = computed(() => {
-  const source = filterKey.value
-    ? photos.value.filter((p) => p.monthKey === filterKey.value)
-    : photos.value
   const map = {}
-  source.forEach((photo) => {
+  photos.value.forEach((photo) => {
     const key = photo.monthKey || 'unknown'
     if (!map[key]) map[key] = { key, label: photo.monthLabel || key, photos: [] }
     map[key].photos.push(photo)
@@ -152,25 +166,15 @@ const filteredCount = computed(() =>
   filteredGroups.value.reduce((sum, g) => sum + g.photos.length, 0)
 )
 
-function handleUpload(e) {
+async function handleUpload(e) {
   const files = Array.from(e.target.files)
-  files.forEach((file) => {
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      const now = new Date()
-      const key = monthKey(now.getFullYear(), now.getMonth() + 1)
-      const newPhoto = {
-        url: ev.target.result,
-        title: file.name.replace(/\.[^/.]+$/, ''),
-        date: now.toLocaleDateString('ko-KR'),
-        monthKey: key,
-        monthLabel: `${now.getFullYear()}년 ${now.getMonth() + 1}월`,
-      }
-      photos.value.push(newPhoto)
-      localStorage.setItem('photos', JSON.stringify(photos.value))
-    }
-    reader.readAsDataURL(file)
-  })
+  for (const file of files) {
+    const formData = new FormData()
+    formData.append('file', file)
+    const res = await fetch('/api/photos', { method: 'POST', body: formData })
+    const saved = await res.json()
+    photos.value.unshift(saved)
+  }
   e.target.value = ''
 }
 
@@ -178,10 +182,10 @@ function openPhoto(photo) {
   viewerPhoto.value = photo
 }
 
-function deletePhoto(photo) {
+async function deletePhoto(photo) {
   if (!confirm('사진을 삭제할까요?')) return
-  photos.value = photos.value.filter((p) => p !== photo)
-  localStorage.setItem('photos', JSON.stringify(photos.value))
+  await fetch(`/api/photos/${photo.id}`, { method: 'DELETE' })
+  photos.value = photos.value.filter((p) => p.id !== photo.id)
   viewerPhoto.value = null
 }
 </script>
