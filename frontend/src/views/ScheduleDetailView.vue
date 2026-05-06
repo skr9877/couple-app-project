@@ -94,10 +94,10 @@ const whoOptions = [
 
 const form = ref({ title: '', time: '', who: '함께', memo: '' })
 
-onMounted(() => {
-  const all = JSON.parse(localStorage.getItem('schedules') || '[]')
-  const found = all.find((s) => s.id === id)
-  if (found) {
+onMounted(async () => {
+  const res = await fetch(`/api/schedules/${id}`)
+  if (res.ok) {
+    const found = await res.json()
     schedule.value = found
     form.value = { title: found.title, time: found.time || '', who: found.who, memo: found.memo || '' }
   }
@@ -126,22 +126,22 @@ function cancelEdit() {
   isEditing.value = false
 }
 
-function save() {
+async function save() {
   if (!form.value.title.trim()) { alert('제목을 입력해주세요'); return }
-  const all = JSON.parse(localStorage.getItem('schedules') || '[]')
-  const idx = all.findIndex((s) => s.id === id)
-  if (idx !== -1) {
-    all[idx] = { ...all[idx], ...form.value }
-    localStorage.setItem('schedules', JSON.stringify(all))
-    schedule.value = all[idx]
+  const res = await fetch(`/api/schedules/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(form.value),
+  })
+  if (res.ok) {
+    schedule.value = await res.json()
   }
   isEditing.value = false
 }
 
-function confirmDelete() {
+async function confirmDelete() {
   if (!confirm('일정을 삭제할까요?')) return
-  const all = JSON.parse(localStorage.getItem('schedules') || '[]')
-  localStorage.setItem('schedules', JSON.stringify(all.filter((s) => s.id !== id)))
+  await fetch(`/api/schedules/${id}`, { method: 'DELETE' })
   router.back()
 }
 </script>

@@ -65,14 +65,16 @@ const whoOptions = [
 
 const form = ref({ title: '', time: '', who: '함께', memo: '' })
 
-function save() {
+async function save() {
   if (!form.value.title.trim()) {
     alert('제목을 입력해주세요')
     return
   }
-  const schedules = JSON.parse(localStorage.getItem('schedules') || '[]')
-  schedules.push({ id: Date.now(), date, ...form.value })
-  localStorage.setItem('schedules', JSON.stringify(schedules))
+  await fetch('/api/schedules', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date, ...form.value }),
+  })
   router.push({ name: 'calendar' })
 }
 </script>
