@@ -185,8 +185,9 @@ const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart
 const dayNames = ['일', '월', '화', '수', '목', '금', '토']
 const schedules = ref([])
 
-onMounted(() => {
-  schedules.value = JSON.parse(localStorage.getItem('schedules') || '[]')
+onMounted(async () => {
+  const res = await fetch('/api/schedules')
+  schedules.value = await res.json()
 })
 
 // ── 미니 달력 ──
