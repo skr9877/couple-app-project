@@ -37,7 +37,6 @@ public class OneLinerController {
 
     private Map<String, Object> toMap(OneLiner o) {
         Map<String, Object> map = new HashMap<>();
-        map.put("id", o.getId());
         map.put("date", o.getDate().toString());
         map.put("who", o.getWho());
         map.put("content", o.getContent());

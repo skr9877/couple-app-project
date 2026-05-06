@@ -9,15 +9,15 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "ONE_LINER")
+@IdClass(OneLinerKey.class)
 @Getter
 @Setter
 public class OneLiner {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
     private LocalDate date;
+
+    @Id
     private String who;
 
     @Column(length = 500)

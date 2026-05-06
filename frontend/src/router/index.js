@@ -1,10 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
-import PhotosView from '../views/PhotosView.vue'
-import CalendarView from '../views/CalendarView.vue'
-import MapView from '../views/MapView.vue'
-import ScheduleRegisterView from '../views/ScheduleRegisterView.vue'
-import ScheduleDetailView from '../views/ScheduleDetailView.vue'
+import PhotosView from '../views/photos/PhotosView.vue'
+import CalendarView from '../views/schedule/CalendarView.vue'
+import MapView from '../views/map/MapView.vue'
+import ScheduleRegisterView from '../views/schedule/ScheduleRegisterView.vue'
+import ScheduleDetailView from '../views/schedule/ScheduleDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
