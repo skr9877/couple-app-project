@@ -186,8 +186,11 @@ const dayNames = ['일', '월', '화', '수', '목', '금', '토']
 const schedules = ref([])
 
 onMounted(async () => {
-  const res = await fetch('/api/schedules')
-  schedules.value = await res.json()
+  const [schedulesRes] = await Promise.all([
+    fetch('/api/schedules'),
+    loadOneLiners(),
+  ])
+  schedules.value = await schedulesRes.json()
 })
 
 // ── 미니 달력 ──
@@ -261,13 +264,27 @@ function whoLabel(who) {
 
 // ── 오늘의 한줄 ──
 const myOneLiner = ref('')
-const partnerOneLiner = ref('오늘도 사랑해 💕')
+const partnerOneLiner = ref('')
 const myOneLinerInput = ref('')
-const saveOneLiner = () => {
-  if (myOneLinerInput.value.trim()) {
-    myOneLiner.value = myOneLinerInput.value.trim()
-    myOneLinerInput.value = ''
-  }
+
+async function loadOneLiners() {
+  const res = await fetch(`/api/oneliners?date=${todayStr}`)
+  const list = await res.json()
+  list.forEach((item) => {
+    if (item.who === '나') myOneLiner.value = item.content
+    else if (item.who === '상대방') partnerOneLiner.value = item.content
+  })
+}
+
+async function saveOneLiner() {
+  if (!myOneLinerInput.value.trim()) return
+  await fetch('/api/oneliners', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ date: todayStr, who: '나', content: myOneLinerInput.value.trim() }),
+  })
+  myOneLiner.value = myOneLinerInput.value.trim()
+  myOneLinerInput.value = ''
 }
 </script>
 
