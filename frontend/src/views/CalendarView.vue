@@ -135,8 +135,9 @@ function stopDrag() {
   document.removeEventListener('mouseup', stopDrag)
 }
 
-onMounted(() => {
-  schedules.value = JSON.parse(localStorage.getItem('schedules') || '[]')
+onMounted(async () => {
+  const res = await fetch('/api/schedules')
+  schedules.value = await res.json()
 })
 onUnmounted(() => {
   document.removeEventListener('mousemove', onDrag)
