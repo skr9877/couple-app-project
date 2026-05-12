@@ -5,6 +5,8 @@ import CalendarView from '../views/schedule/CalendarView.vue'
 import MapView from '../views/map/MapView.vue'
 import ScheduleRegisterView from '../views/schedule/ScheduleRegisterView.vue'
 import ScheduleDetailView from '../views/schedule/ScheduleDetailView.vue'
+import AnniversaryView from '../views/anniversary/AnniversaryView.vue'
+import AnniversaryDetailView from '../views/anniversary/AnniversaryDetailView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -38,6 +40,16 @@ const router = createRouter({
       path: '/schedule/:id',
       name: 'schedule-detail',
       component: ScheduleDetailView,
+    },
+    {
+      path: '/anniversary',
+      name: 'anniversary',
+      component: AnniversaryView,
+    },
+    {
+      path: '/anniversary/:id',
+      name: 'anniversary-detail',
+      component: AnniversaryDetailView,
     },
   ],
 })
