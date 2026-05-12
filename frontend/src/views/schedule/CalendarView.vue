@@ -16,7 +16,7 @@
           v-for="s in monthSchedules"
           :key="s.id"
           class="schedule-item"
-          @click="router.push({ name: 'schedule-detail', params: { id: s.id } })"
+          @click="openItem(s)"
         >
           <div class="schedule-badge">{{ formatDay(s.date) }}</div>
           <div class="schedule-info">
@@ -77,9 +77,9 @@
                   v-for="s in visibleSchedules(cell)"
                   :key="s.id"
                   class="event-bar"
-                  :class="whoClass(s.who)"
+                  :class="whoClass(s)"
                   :title="s.title"
-                  @click.stop="router.push({ name: 'schedule-detail', params: { id: s.id } })"
+                  @click.stop="openItem(s)"
                 >
                   <span v-if="s.time" class="event-time">{{ s.time }}</span>
                   {{ s.title }}
@@ -107,8 +107,22 @@ const today = new Date()
 const year = ref(today.getFullYear())
 const month = ref(today.getMonth())
 const schedules = ref([])
+const anniversaries = ref([])
 
 const dayNames = ['일', '월', '화', '수', '목', '금', '토']
+
+function anniversaryItems() {
+  return anniversaries.value.map((ann) => ({
+    id: `ann-${ann.id}`,
+    date: `${year.value}-${String(ann.month).padStart(2, '0')}-${String(ann.day).padStart(2, '0')}`,
+    title: ann.title,
+    who: ann.who,
+    memo: ann.memo,
+    isAnniversary: true,
+  }))
+}
+
+const allItems = computed(() => [...schedules.value, ...anniversaryItems()])
 
 // ── 리사이즈 ──
 const containerRef = ref(null)
@@ -136,8 +150,12 @@ function stopDrag() {
 }
 
 onMounted(async () => {
-  const res = await fetch('/api/schedules')
-  schedules.value = await res.json()
+  const [schedulesRes, anniversariesRes] = await Promise.all([
+    fetch('/api/schedules'),
+    fetch('/api/anniversaries'),
+  ])
+  schedules.value = await schedulesRes.json()
+  anniversaries.value = await anniversariesRes.json()
 })
 onUnmounted(() => {
   document.removeEventListener('mousemove', onDrag)
@@ -169,7 +187,7 @@ const calendarCells = computed(() => {
 })
 
 function getSchedules(cell) {
-  return schedules.value
+  return allItems.value
     .filter((s) => s.date === cell.dateStr)
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
 }
@@ -180,15 +198,25 @@ function hiddenCount(cell) {
   return Math.max(0, getSchedules(cell).length - MAX_VISIBLE)
 }
 
-function whoClass(who) {
+function whoClass(item) {
+  if (item && item.isAnniversary) return 'who-anniversary'
+  const who = typeof item === 'string' ? item : item?.who
   if (who === '나') return 'who-me'
   if (who === '상대방') return 'who-other'
   return 'who-together'
 }
 
+function openItem(s) {
+  if (s.isAnniversary) {
+    router.push({ name: 'anniversary-detail', params: { id: s.id.replace('ann-', '') } })
+  } else {
+    router.push({ name: 'schedule-detail', params: { id: s.id } })
+  }
+}
+
 const monthSchedules = computed(() => {
   const prefix = `${year.value}-${String(month.value + 1).padStart(2, '0')}`
-  return schedules.value
+  return allItems.value
     .filter((s) => s.date.startsWith(prefix))
     .sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || ''))
 })
@@ -462,9 +490,10 @@ h1 {
 }
 
 /* 누구랑 색상 */
-.who-together { background: #e91e63; }
-.who-me       { background: #8e24aa; }
-.who-other    { background: #1565c0; }
+.who-together   { background: #e91e63; }
+.who-me         { background: #8e24aa; }
+.who-other      { background: #1565c0; }
+.who-anniversary { background: #ff9800; }
 
 .more-count {
   font-size: 0.75rem;

@@ -16,12 +16,9 @@
         <RouterLink to="/map" class="panel-item" @click="closePanel">
           <span class="panel-icon">🍽️</span><span>맛집 찾기</span>
         </RouterLink>
-        <a href="#" class="panel-item">
-          <span class="panel-icon">💌</span><span>편지 쓰기</span>
-        </a>
-        <a href="#" class="panel-item">
-          <span class="panel-icon">🎁</span><span>기념일 등록</span>
-        </a>
+        <RouterLink to="/anniversary" class="panel-item" @click="closePanel">
+          <span class="panel-icon">🎂</span><span>기념일 등록</span>
+        </RouterLink>
       </nav>
     </div>
 
@@ -88,14 +85,14 @@
               v-for="s in todaySchedules"
               :key="s.id"
               class="schedule-card"
-              :class="whoClass(s.who)"
-              @click="router.push({ name: 'schedule-detail', params: { id: s.id } })"
+              :class="whoClass(s)"
+              @click="openSchedule(s)"
             >
               <div class="card-accent"></div>
               <div class="card-body">
                 <div class="card-top">
                   <span class="card-time" v-if="s.time">{{ s.time }}</span>
-                  <span class="card-who" :class="whoClass(s.who)">{{ whoLabel(s.who) }}</span>
+                  <span class="card-who" :class="whoClass(s)">{{ whoLabel(s.who) }}</span>
                 </div>
                 <div class="card-title">{{ s.title }}</div>
                 <div v-if="s.memo" class="card-memo">{{ s.memo }}</div>
@@ -142,9 +139,9 @@
                       v-for="s in visibleSchedules(cell)"
                       :key="s.id"
                       class="cal-event-bar"
-                      :class="whoClass(s.who)"
+                      :class="whoClass(s)"
                       :title="s.title"
-                      @click.stop="router.push({ name: 'schedule-detail', params: { id: s.id } })"
+                      @click.stop="openSchedule(s)"
                     >{{ s.title }}</div>
                     <div v-if="hiddenCount(cell) > 0" class="cal-more">+{{ hiddenCount(cell) }}</div>
                   </div>
@@ -184,14 +181,28 @@ const today = new Date()
 const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 const dayNames = ['일', '월', '화', '수', '목', '금', '토']
 const schedules = ref([])
+const anniversaries = ref([])
 
 onMounted(async () => {
-  const [schedulesRes] = await Promise.all([
+  const [schedulesRes, anniversariesRes] = await Promise.all([
     fetch('/api/schedules'),
+    fetch('/api/anniversaries'),
     loadOneLiners(),
   ])
   schedules.value = await schedulesRes.json()
+  anniversaries.value = await anniversariesRes.json()
 })
+
+function anniversaryItemsForYear(yr) {
+  return anniversaries.value.map((ann) => ({
+    id: `ann-${ann.id}`,
+    date: `${yr}-${String(ann.month).padStart(2, '0')}-${String(ann.day).padStart(2, '0')}`,
+    title: ann.title,
+    who: ann.who,
+    memo: ann.memo,
+    isAnniversary: true,
+  }))
+}
 
 // ── 미니 달력 ──
 const calYear = ref(today.getFullYear())
@@ -225,7 +236,8 @@ const calendarCells = computed(() => {
 const MAX_VISIBLE = 1
 
 function getSchedules(cell) {
-  return schedules.value
+  const calItems = [...schedules.value, ...anniversaryItemsForYear(calYear.value)]
+  return calItems
     .filter((s) => s.date === cell.dateStr)
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
 }
@@ -245,13 +257,16 @@ const todayLabel = computed(() => {
   return `${today.getMonth() + 1}월 ${today.getDate()}일 (${d})`
 })
 
-const todaySchedules = computed(() =>
-  schedules.value
+const todaySchedules = computed(() => {
+  const allItems = [...schedules.value, ...anniversaryItemsForYear(today.getFullYear())]
+  return allItems
     .filter((s) => s.date === todayStr)
     .sort((a, b) => (a.time || '').localeCompare(b.time || ''))
-)
+})
 
-function whoClass(who) {
+function whoClass(item) {
+  if (item && item.isAnniversary) return 'who-anniversary'
+  const who = typeof item === 'string' ? item : item?.who
   if (who === '나') return 'who-me'
   if (who === '상대방') return 'who-other'
   return 'who-together'
@@ -260,6 +275,13 @@ function whoLabel(who) {
   if (who === '나') return '👧 나'
   if (who === '상대방') return '👦 상대방'
   return '💕 함께'
+}
+function openSchedule(s) {
+  if (s.isAnniversary) {
+    router.push({ name: 'anniversary-detail', params: { id: s.id.replace('ann-', '') } })
+  } else {
+    router.push({ name: 'schedule-detail', params: { id: s.id } })
+  }
 }
 
 // ── 오늘의 한줄 ──
@@ -496,9 +518,10 @@ async function saveOneLiner() {
   line-height: 1.5;
   cursor: pointer;
 }
-.cal-event-bar.who-together { background: #e91e63; }
-.cal-event-bar.who-me       { background: #8e24aa; }
-.cal-event-bar.who-other    { background: #1565c0; }
+.cal-event-bar.who-together   { background: #e91e63; }
+.cal-event-bar.who-me         { background: #8e24aa; }
+.cal-event-bar.who-other      { background: #1565c0; }
+.cal-event-bar.who-anniversary { background: #ff9800; }
 .cal-more {
   font-size: 0.68rem;
   font-weight: bold;
@@ -547,9 +570,10 @@ async function saveOneLiner() {
 .schedule-card:last-child { margin-bottom: 0; }
 
 .card-accent { width: 5px; flex-shrink: 0; }
-.who-together .card-accent { background: #e91e63; }
-.who-me       .card-accent { background: #8e24aa; }
-.who-other    .card-accent { background: #1565c0; }
+.who-together   .card-accent { background: #e91e63; }
+.who-me         .card-accent { background: #8e24aa; }
+.who-other      .card-accent { background: #1565c0; }
+.who-anniversary .card-accent { background: #ff9800; }
 
 .card-body { flex: 1; padding: 10px 12px; }
 .card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
@@ -557,9 +581,10 @@ async function saveOneLiner() {
 .card-who {
   font-size: 0.68rem; font-weight: bold; padding: 2px 7px; border-radius: 8px;
 }
-.card-who.who-together { background: #fce4ec; color: #e91e63; }
-.card-who.who-me       { background: #f3e5f5; color: #8e24aa; }
-.card-who.who-other    { background: #e3f2fd; color: #1565c0; }
+.card-who.who-together   { background: #fce4ec; color: #e91e63; }
+.card-who.who-me         { background: #f3e5f5; color: #8e24aa; }
+.card-who.who-other      { background: #e3f2fd; color: #1565c0; }
+.card-who.who-anniversary { background: #fff3e0; color: #ff9800; }
 .card-title { font-size: 0.88rem; font-weight: bold; color: #222; }
 .card-memo { font-size: 0.72rem; color: #aaa; margin-top: 4px; line-height: 1.4; }
 
