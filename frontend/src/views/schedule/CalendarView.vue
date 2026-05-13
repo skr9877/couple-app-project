@@ -41,9 +41,35 @@
       <!-- 우측: 달력 -->
       <div class="calendar-panel">
         <div class="month-nav">
-          <button class="nav-btn" @click="prevMonth">‹</button>
-          <span class="month-title">{{ year }}년 {{ month + 1 }}월</span>
-          <button class="nav-btn" @click="nextMonth">›</button>
+          <div class="nav-group">
+            <button class="nav-btn" @click="prevYear" title="이전 연도">‹‹</button>
+            <button class="nav-btn" @click="prevMonth" title="이전 달">‹</button>
+          </div>
+          <button class="month-title" @click="openPicker">{{ year }}년 {{ month + 1 }}월</button>
+          <div class="nav-group">
+            <button class="nav-btn" @click="nextMonth" title="다음 달">›</button>
+            <button class="nav-btn" @click="nextYear" title="다음 연도">››</button>
+          </div>
+        </div>
+
+        <div v-if="showPicker" class="picker-overlay" @click.self="showPicker = false">
+          <div class="picker-popup">
+            <div class="picker-year-row">
+              <button class="picker-nav" @click="pickerYear--">‹</button>
+              <span class="picker-year-label">{{ pickerYear }}년</span>
+              <button class="picker-nav" @click="pickerYear++">›</button>
+            </div>
+            <div class="picker-months">
+              <button
+                v-for="m in 12"
+                :key="m"
+                class="picker-month-btn"
+                :class="{ active: pickerYear === year && m - 1 === month }"
+                @click="selectMonth(pickerYear, m - 1)"
+              >{{ m }}월</button>
+            </div>
+            <button class="picker-today" @click="goToday">오늘로</button>
+          </div>
         </div>
 
         <div class="day-headers">
@@ -167,6 +193,26 @@ function prevMonth() {
 }
 function nextMonth() {
   if (month.value === 11) { month.value = 0; year.value++ } else month.value++
+}
+function prevYear() { year.value-- }
+function nextYear() { year.value++ }
+
+const showPicker = ref(false)
+const pickerYear = ref(today.getFullYear())
+
+function openPicker() {
+  pickerYear.value = year.value
+  showPicker.value = true
+}
+function selectMonth(y, m) {
+  year.value = y
+  month.value = m
+  showPicker.value = false
+}
+function goToday() {
+  year.value = today.getFullYear()
+  month.value = today.getMonth()
+  showPicker.value = false
 }
 
 const calendarCells = computed(() => {
@@ -376,19 +422,28 @@ h1 {
   justify-content: space-between;
   margin-bottom: 10px;
   flex-shrink: 0;
+  position: relative;
 }
+.nav-group { display: flex; gap: 4px; }
 .month-title {
   font-size: 2.07rem;
   font-weight: bold;
   color: #333;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 10px;
+  transition: background 0.15s;
 }
+.month-title:hover { background: #fce4ec; }
 .nav-btn {
   background: #fce4ec;
   border: none;
   border-radius: 50%;
   width: 36px;
   height: 36px;
-  font-size: 1.35rem;
+  font-size: 1.1rem;
   color: #e91e63;
   cursor: pointer;
   display: flex;
@@ -397,6 +452,71 @@ h1 {
   transition: background 0.2s;
 }
 .nav-btn:hover { background: #f48fb1; color: white; }
+
+/* ── 팝업 ── */
+.picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.picker-popup {
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 8px 32px rgba(233,30,99,0.2);
+  min-width: 240px;
+}
+.picker-year-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.picker-year-label { font-size: 1.1rem; font-weight: bold; color: #333; }
+.picker-nav {
+  background: #fce4ec;
+  border: none;
+  border-radius: 50%;
+  width: 32px; height: 32px;
+  font-size: 1.1rem;
+  color: #e91e63;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.picker-nav:hover { background: #f48fb1; color: white; }
+.picker-months {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.picker-month-btn {
+  padding: 8px 0;
+  border: 1.5px solid #f0f0f0;
+  border-radius: 10px;
+  background: white;
+  color: #555;
+  font-size: 0.88rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.picker-month-btn:hover { border-color: #e91e63; color: #e91e63; }
+.picker-month-btn.active { background: #e91e63; color: white; border-color: #e91e63; font-weight: bold; }
+.picker-today {
+  width: 100%;
+  padding: 9px;
+  background: #fce4ec;
+  border: none;
+  border-radius: 10px;
+  color: #e91e63;
+  font-size: 0.88rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+.picker-today:hover { background: #f48fb1; color: white; }
 
 /* 요일 헤더 */
 .day-headers {

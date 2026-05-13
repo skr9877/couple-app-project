@@ -56,7 +56,13 @@
         <div class="list-title">등록된 기념일</div>
         <div v-if="sortedAnniversaries.length === 0" class="empty">아직 기념일이 없어요 🎁</div>
         <div class="list-scroll">
-          <div v-for="ann in sortedAnniversaries" :key="ann.id" class="ann-item" :class="{ editing: editingId === ann.id }">
+          <div
+            v-for="ann in sortedAnniversaries"
+            :key="ann.id"
+            class="ann-item"
+            :class="{ editing: editingId === ann.id, selected: selectedId === ann.id }"
+            @click="toggleSelect(ann.id)"
+          >
             <div class="ann-badge">{{ ann.month }}/{{ ann.day }}</div>
             <div class="ann-info">
               <div class="ann-title">{{ ann.title }}</div>
@@ -65,8 +71,11 @@
                 <span v-if="ann.memo" class="ann-memo">{{ ann.memo }}</span>
               </div>
             </div>
-            <button class="edit-btn" @click="startEdit(ann)">✏️</button>
-            <button class="del-btn" @click="remove(ann.id)">✕</button>
+            <div v-if="selectedId === ann.id" class="action-btns" @click.stop>
+              <button class="action-edit" @click="startEdit(ann); selectedId = null">수정</button>
+              <button class="action-del" @click="remove(ann.id)">삭제</button>
+              <button class="action-cancel" @click="selectedId = null">취소</button>
+            </div>
           </div>
         </div>
       </div>
@@ -80,6 +89,11 @@ import { ref, computed, watch, onMounted } from 'vue'
 const anniversaries = ref([])
 const form = ref({ title: '', month: 1, day: 1, memo: '', who: '함께' })
 const editingId = ref(null)
+const selectedId = ref(null)
+
+function toggleSelect(id) {
+  selectedId.value = selectedId.value === id ? null : id
+}
 
 const whoOptions = [
   { value: '함께', label: '💕 함께' },
@@ -116,6 +130,7 @@ function startEdit(ann) {
 
 function cancelEdit() {
   editingId.value = null
+  selectedId.value = null
   form.value = { title: '', month: 1, day: 1, memo: '', who: '함께' }
 }
 
@@ -372,8 +387,42 @@ textarea {
   border-radius: 12px;
   transition: background 0.15s;
 }
+.ann-item { cursor: pointer; }
 .ann-item:hover { background: #fafafa; }
 .ann-item.editing { background: #fff3e0; }
+.ann-item.selected { background: #fce4ec; }
+
+.action-btns {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.action-edit,
+.action-del,
+.action-cancel {
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+}
+.action-edit {
+  background: #e91e63;
+  color: white;
+}
+.action-del {
+  background: white;
+  color: #e91e63;
+  border: 2px solid #f48fb1;
+}
+.action-cancel {
+  background: white;
+  color: #aaa;
+  border: 2px solid #f0f0f0;
+}
+.action-edit:hover, .action-del:hover, .action-cancel:hover { opacity: 0.8; }
 
 .ann-badge {
   background: #fff3e0;

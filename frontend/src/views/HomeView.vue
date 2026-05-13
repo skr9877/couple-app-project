@@ -38,7 +38,16 @@
           <div class="dday-info">
             <div class="dday-count">D+{{ dday }}</div>
             <div class="dday-label">우리가 함께한 날</div>
-            <div class="dday-date">{{ startDate }} 부터</div>
+            <template v-if="!isEditingDate">
+              <div class="dday-date" @click="startEditDate">{{ startDate }} 부터 ✏️</div>
+            </template>
+            <template v-else>
+              <div class="dday-edit-row">
+                <input type="date" v-model="dateInput" class="date-input" />
+                <button class="date-confirm" @click="confirmDate">확인</button>
+                <button class="date-cancel" @click="isEditingDate = false">취소</button>
+              </div>
+            </template>
           </div>
         </div>
 
@@ -103,9 +112,35 @@
           <!-- 미니 달력 (우측, 크게) -->
           <div class="widget calendar-widget">
             <div class="cal-header">
-              <button class="cal-nav" @click="prevMonth">‹</button>
-              <span class="cal-title">{{ calYear }}.{{ String(calMonth + 1).padStart(2, '0') }}</span>
-              <button class="cal-nav" @click="nextMonth">›</button>
+              <div class="cal-nav-group">
+                <button class="cal-nav" @click="calPrevYear" title="이전 연도">‹‹</button>
+                <button class="cal-nav" @click="prevMonth" title="이전 달">‹</button>
+              </div>
+              <button class="cal-title" @click="openCalPicker">{{ calYear }}.{{ String(calMonth + 1).padStart(2, '0') }}</button>
+              <div class="cal-nav-group">
+                <button class="cal-nav" @click="nextMonth" title="다음 달">›</button>
+                <button class="cal-nav" @click="calNextYear" title="다음 연도">››</button>
+              </div>
+            </div>
+
+            <div v-if="showCalPicker" class="cal-picker-overlay" @click.self="showCalPicker = false">
+              <div class="cal-picker-popup">
+                <div class="cal-picker-year-row">
+                  <button class="cal-picker-nav" @click="calPickerYear--">‹</button>
+                  <span class="cal-picker-year-label">{{ calPickerYear }}년</span>
+                  <button class="cal-picker-nav" @click="calPickerYear++">›</button>
+                </div>
+                <div class="cal-picker-months">
+                  <button
+                    v-for="m in 12"
+                    :key="m"
+                    class="cal-picker-month-btn"
+                    :class="{ active: calPickerYear === calYear && m - 1 === calMonth }"
+                    @click="selectCalMonth(calPickerYear, m - 1)"
+                  >{{ m }}월</button>
+                </div>
+                <button class="cal-picker-today" @click="goCalToday">오늘로</button>
+              </div>
             </div>
 
             <div class="cal-day-headers">
@@ -171,9 +206,28 @@ const openPanel = () => { isPanelOpen.value = true }
 const closePanel = () => { isPanelOpen.value = false }
 
 // ── D-Day ──
-const startDate = '2024-01-01'
+const startDate = ref('')
+const isEditingDate = ref(false)
+const dateInput = ref('')
+
+function startEditDate() {
+  dateInput.value = startDate.value
+  isEditingDate.value = true
+}
+async function confirmDate() {
+  if (!dateInput.value) return
+  const res = await fetch('/api/couple-info', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ startDate: dateInput.value }),
+  })
+  const data = await res.json()
+  startDate.value = data.startDate
+  isEditingDate.value = false
+}
+
 const dday = computed(() => {
-  return Math.floor((new Date() - new Date(startDate)) / (1000 * 60 * 60 * 24))
+  return Math.floor((new Date() - new Date(startDate.value)) / (1000 * 60 * 60 * 24))
 })
 
 // ── 공통 ──
@@ -184,13 +238,16 @@ const schedules = ref([])
 const anniversaries = ref([])
 
 onMounted(async () => {
-  const [schedulesRes, anniversariesRes] = await Promise.all([
+  const [schedulesRes, anniversariesRes, coupleInfoRes] = await Promise.all([
     fetch('/api/schedules'),
     fetch('/api/anniversaries'),
+    fetch('/api/couple-info'),
     loadOneLiners(),
   ])
   schedules.value = await schedulesRes.json()
   anniversaries.value = await anniversariesRes.json()
+  const info = await coupleInfoRes.json()
+  startDate.value = info.startDate || '2024-01-01'
 })
 
 function anniversaryItemsForYear(yr) {
@@ -213,6 +270,26 @@ function prevMonth() {
 }
 function nextMonth() {
   if (calMonth.value === 11) { calMonth.value = 0; calYear.value++ } else calMonth.value++
+}
+function calPrevYear() { calYear.value-- }
+function calNextYear() { calYear.value++ }
+
+const showCalPicker = ref(false)
+const calPickerYear = ref(today.getFullYear())
+
+function openCalPicker() {
+  calPickerYear.value = calYear.value
+  showCalPicker.value = true
+}
+function selectCalMonth(y, m) {
+  calYear.value = y
+  calMonth.value = m
+  showCalPicker.value = false
+}
+function goCalToday() {
+  calYear.value = today.getFullYear()
+  calMonth.value = today.getMonth()
+  showCalPicker.value = false
 }
 
 const calendarCells = computed(() => {
@@ -401,7 +478,28 @@ async function saveOneLiner() {
 .dday-heart { font-size: 2.2rem; }
 .dday-count { font-size: 1.6rem; font-weight: bold; color: #e91e63; }
 .dday-label { font-size: 0.78rem; color: #888; }
-.dday-date { font-size: 0.7rem; color: #bbb; margin-top: 2px; }
+.dday-date { font-size: 0.7rem; color: #bbb; margin-top: 2px; cursor: pointer; }
+.dday-date:hover { color: #e91e63; }
+
+.dday-edit-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
+.date-input {
+  border: 1.5px solid #f8bbd0; border-radius: 8px;
+  padding: 4px 8px; font-size: 0.72rem; color: #333;
+  outline: none; background: white;
+}
+.date-input:focus { border-color: #e91e63; }
+.date-confirm {
+  padding: 4px 10px; background: #e91e63; color: white;
+  border: none; border-radius: 8px; font-size: 0.72rem;
+  font-weight: bold; cursor: pointer;
+}
+.date-confirm:hover { opacity: 0.85; }
+.date-cancel {
+  padding: 4px 8px; background: white; color: #aaa;
+  border: 1.5px solid #eee; border-radius: 8px;
+  font-size: 0.72rem; cursor: pointer;
+}
+.date-cancel:hover { border-color: #e91e63; color: #e91e63; }
 
 /* ── 오늘의 한줄 (고정 높이) ── */
 .oneliner-widget { flex-shrink: 0; }
@@ -451,16 +549,64 @@ async function saveOneLiner() {
 /* ── 미니 달력 ── */
 .cal-header {
   flex-shrink: 0;
-  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 4px; margin-bottom: 12px;
+  position: relative;
 }
-.cal-title { font-size: 2.07rem; font-weight: bold; color: #333; flex: 1; text-align: center; }
+.cal-nav-group { display: flex; gap: 3px; }
+.cal-title {
+  font-size: 1.5rem; font-weight: bold; color: #333;
+  background: none; border: none; cursor: pointer;
+  padding: 3px 8px; border-radius: 8px; transition: background 0.15s;
+}
+.cal-title:hover { background: #fce4ec; }
 .cal-nav {
   background: #fce4ec; border: none; border-radius: 50%;
-  width: 36px; height: 36px; font-size: 1.35rem; color: #e91e63;
+  width: 30px; height: 30px; font-size: 1rem; color: #e91e63;
   cursor: pointer; display: flex; align-items: center; justify-content: center;
   transition: background 0.2s; padding: 0;
 }
 .cal-nav:hover { background: #f48fb1; color: white; }
+
+/* ── 미니 달력 팝업 ── */
+.cal-picker-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cal-picker-popup {
+  background: white;
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 8px 32px rgba(233,30,99,0.2);
+  min-width: 210px;
+}
+.cal-picker-year-row {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+}
+.cal-picker-year-label { font-size: 1rem; font-weight: bold; color: #333; }
+.cal-picker-nav {
+  background: #fce4ec; border: none; border-radius: 50%;
+  width: 28px; height: 28px; font-size: 1rem; color: #e91e63; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.cal-picker-nav:hover { background: #f48fb1; color: white; }
+.cal-picker-months {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-bottom: 10px;
+}
+.cal-picker-month-btn {
+  padding: 7px 0; border: 1.5px solid #f0f0f0; border-radius: 8px;
+  background: white; color: #555; font-size: 0.82rem; cursor: pointer; transition: all 0.15s;
+}
+.cal-picker-month-btn:hover { border-color: #e91e63; color: #e91e63; }
+.cal-picker-month-btn.active { background: #e91e63; color: white; border-color: #e91e63; font-weight: bold; }
+.cal-picker-today {
+  width: 100%; padding: 8px; background: #fce4ec; border: none; border-radius: 8px;
+  color: #e91e63; font-size: 0.82rem; font-weight: bold; cursor: pointer;
+}
+.cal-picker-today:hover { background: #f48fb1; color: white; }
 
 .cal-day-headers {
   flex-shrink: 0;
